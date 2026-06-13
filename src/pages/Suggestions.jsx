@@ -1,9 +1,14 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import SuggestionCard from '../components/SuggestionCard';
+import SuggestionCard from '../components/suggestions/SuggestionCard';
 import { getSuggestions } from '../utils/suggestions';
 import { getLastCalculation } from '../utils/storage';
 
+/**
+ * Suggestions page component.
+ * Performs personalized analysis of the latest carbon calculation
+ * to serve targeted green options and custom savings opportunities.
+ */
 export default function Suggestions() {
   const lastCalc = getLastCalculation();
   const [filter, setFilter] = useState('all');

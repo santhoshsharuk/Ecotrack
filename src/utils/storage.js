@@ -11,6 +11,8 @@ const STORAGE_KEYS = {
 
 /**
  * Safely get a JSON value from localStorage
+ * @param {string} key - The localStorage key
+ * @returns {*} The parsed JSON value, or null if not found or on error
  */
 export function getItem(key) {
   try {
@@ -24,6 +26,9 @@ export function getItem(key) {
 
 /**
  * Safely set a JSON value in localStorage
+ * @param {string} key - The localStorage key
+ * @param {*} value - The value to store
+ * @returns {boolean} True if successful, false otherwise
  */
 export function setItem(key, value) {
   try {
@@ -37,6 +42,8 @@ export function setItem(key, value) {
 
 /**
  * Remove a key from localStorage
+ * @param {string} key - The localStorage key
+ * @returns {boolean} True if successful, false otherwise
  */
 export function removeItem(key) {
   try {
@@ -52,15 +59,56 @@ export function removeItem(key) {
 
 /**
  * Save a carbon footprint calculation to history
+ * Maps properties for both local and firestore schemas to ensure compatibility.
+ * @param {Object} calculation - The calculation data
+ * @param {string} [customId] - Optional custom ID (e.g. from firestore)
+ * @param {string} [customTimestamp] - Optional custom ISO timestamp
+ * @returns {Object} The saved history entry object
  */
-export function saveCalculation(calculation) {
+export function saveCalculation(calculation, customId = null, customTimestamp = null) {
   const history = getItem(STORAGE_KEYS.HISTORY) || [];
+
+  const total = calculation.totalFootprint ?? calculation.total;
+  const transport = calculation.transportation ?? calculation.transport;
+  const energy = calculation.homeEnergy ?? calculation.energy;
+  const diet = calculation.diet;
+  const lifestyle = calculation.lifestyle;
+  const rating = calculation.impactLevel ?? calculation.rating;
+  const ratingColor = calculation.ratingColor;
+
+  const timestamp = customTimestamp || calculation.createdAt || calculation.timestamp || new Date().toISOString();
+  const id = customId || calculation.id || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
+
   const entry = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-    timestamp: new Date().toISOString(),
     ...calculation,
+    id,
+    timestamp,
+
+    // Original schema keys
+    total,
+    transport,
+    energy,
+    diet,
+    lifestyle,
+    rating,
+    ratingColor,
+
+    // Firestore schema keys for full compatibility
+    totalFootprint: total,
+    transportation: transport,
+    homeEnergy: energy,
+    impactLevel: rating,
+    createdAt: timestamp,
   };
-  history.unshift(entry); // newest first
+
+  // Prevent duplicate ID entry if fallback runs after successful Firestore save
+  const existingIndex = history.findIndex((item) => item.id === entry.id);
+  if (existingIndex > -1) {
+    history[existingIndex] = entry;
+  } else {
+    history.unshift(entry); // newest first
+  }
+
   setItem(STORAGE_KEYS.HISTORY, history);
   setItem(STORAGE_KEYS.LAST_CALCULATION, entry);
   return entry;
@@ -68,6 +116,7 @@ export function saveCalculation(calculation) {
 
 /**
  * Get all calculation history
+ * @returns {Array<Object>} List of history entries
  */
 export function getHistory() {
   return getItem(STORAGE_KEYS.HISTORY) || [];
@@ -75,6 +124,8 @@ export function getHistory() {
 
 /**
  * Delete a single history entry by ID
+ * @param {string} id - The ID of the entry to delete
+ * @returns {Array<Object>} The updated history list
  */
 export function deleteHistoryEntry(id) {
   const history = getHistory().filter((entry) => entry.id !== id);
@@ -103,6 +154,7 @@ export function clearHistory() {
 
 /**
  * Get the most recent calculation
+ * @returns {Object|null} The last calculation object, or null
  */
 export function getLastCalculation() {
   return getItem(STORAGE_KEYS.LAST_CALCULATION);
@@ -112,6 +164,7 @@ export function getLastCalculation() {
 
 /**
  * Get all challenge progress data
+ * @returns {Object} Map of challengeId to progress data
  */
 export function getChallengeProgress() {
   return getItem(STORAGE_KEYS.CHALLENGES) || {};
@@ -119,8 +172,8 @@ export function getChallengeProgress() {
 
 /**
  * Save progress for a specific challenge
- * @param {string} challengeId
- * @param {Object} progress - { joined: boolean, completed: number, startDate: string }
+ * @param {string} challengeId - Unique challenge ID
+ * @param {Object} progress - Progress object { joined: boolean, completed: number, startDate: string }
  */
 export function saveChallengeProgress(challengeId, progress) {
   const allProgress = getChallengeProgress();
@@ -130,6 +183,7 @@ export function saveChallengeProgress(challengeId, progress) {
 
 /**
  * Remove progress for a specific challenge (leave the challenge)
+ * @param {string} challengeId - Unique challenge ID
  */
 export function removeChallengeProgress(challengeId) {
   const allProgress = getChallengeProgress();
@@ -141,6 +195,7 @@ export function removeChallengeProgress(challengeId) {
 
 /**
  * Get saved theme preference
+ * @returns {string} Theme preference ('light' or 'dark')
  */
 export function getTheme() {
   return getItem(STORAGE_KEYS.THEME) || 'light';
@@ -148,6 +203,7 @@ export function getTheme() {
 
 /**
  * Save theme preference
+ * @param {string} theme - Theme preference ('light' or 'dark')
  */
 export function saveTheme(theme) {
   setItem(STORAGE_KEYS.THEME, theme);
@@ -155,6 +211,7 @@ export function saveTheme(theme) {
 
 /**
  * Export history as JSON string (for download)
+ * @returns {string} Pretty printed JSON string of all history
  */
 export function exportHistoryAsJSON() {
   const history = getHistory();

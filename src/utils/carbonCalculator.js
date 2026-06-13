@@ -32,49 +32,124 @@ export const EMISSION_FACTORS = {
   },
 };
 
+// Named Constants to eliminate magic numbers
+export const WEEKS_PER_YEAR = 52;
+export const MONTHS_PER_YEAR = 12;
+export const PERCENT_DIVISOR = 100;
+export const GLOBAL_AVERAGE_FOOTPRINT = 4000;
+
+export const RATING_THRESHOLDS = {
+  EXCELLENT: 3000,
+  GOOD: 5000,
+  AVERAGE: 8000,
+};
+
+export const RATING_COLORS = {
+  Excellent: '#10b981',
+  Good: '#3b82f6',
+  Average: '#f59e0b',
+  High: '#ef4444',
+  Default: '#6b7280',
+};
+
+export const DIET_WASTE_MULTIPLIERS = {
+  high: 1.25,
+  low: 0.9,
+  medium: 1.0,
+};
+
+/**
+ * Get color corresponding to carbon rating
+ * @param {string} rating - The carbon rating
+ * @returns {string} The hex color code
+ */
+export function getRatingColor(rating) {
+  return RATING_COLORS[rating] || RATING_COLORS.Default;
+}
+
 /**
  * Calculate transportation emissions (kg CO₂/year)
+ * @param {Object} params
+ * @param {number} [params.carKmPerWeek=0] - Kilometers driven per week
+ * @param {number} [params.flightHoursPerYear=0] - Flight hours per year
+ * @param {number} [params.publicTransitHoursPerWeek=0] - Hours of public transit per week
+ * @returns {number} Rounded annual carbon emissions in kg CO₂
  */
 export function calculateTransportEmissions({ carKmPerWeek = 0, flightHoursPerYear = 0, publicTransitHoursPerWeek = 0 }) {
-  const carAnnual = carKmPerWeek * 52 * EMISSION_FACTORS.transport.carPerKm;
+  const carAnnual = carKmPerWeek * WEEKS_PER_YEAR * EMISSION_FACTORS.transport.carPerKm;
   const flightAnnual = flightHoursPerYear * EMISSION_FACTORS.transport.flightPerHour;
-  const transitAnnual = publicTransitHoursPerWeek * 52 * EMISSION_FACTORS.transport.publicTransitPerHour;
+  const transitAnnual = publicTransitHoursPerWeek * WEEKS_PER_YEAR * EMISSION_FACTORS.transport.publicTransitPerHour;
   return Math.round(carAnnual + flightAnnual + transitAnnual);
 }
 
 /**
  * Calculate home energy emissions (kg CO₂/year)
+ * @param {Object} params
+ * @param {number} [params.electricityKwhPerMonth=0] - Electricity usage in kWh per month
+ * @param {number} [params.naturalGasThermsPerMonth=0] - Natural gas usage in therms per month
+ * @param {number} [params.renewablePercent=0] - Percentage of energy from renewable sources
+ * @returns {number} Rounded annual carbon emissions in kg CO₂
  */
 export function calculateEnergyEmissions({ electricityKwhPerMonth = 0, naturalGasThermsPerMonth = 0, renewablePercent = 0 }) {
-  const electricityAnnual = electricityKwhPerMonth * 12 * EMISSION_FACTORS.energy.electricityPerKwh;
-  const gasAnnual = naturalGasThermsPerMonth * 12 * EMISSION_FACTORS.energy.naturalGasPerTherm;
-  const renewableFactor = 1 - (renewablePercent / 100);
+  const electricityAnnual = electricityKwhPerMonth * MONTHS_PER_YEAR * EMISSION_FACTORS.energy.electricityPerKwh;
+  const gasAnnual = naturalGasThermsPerMonth * MONTHS_PER_YEAR * EMISSION_FACTORS.energy.naturalGasPerTherm;
+  const renewableFactor = 1 - (renewablePercent / PERCENT_DIVISOR);
   return Math.round((electricityAnnual + gasAnnual) * renewableFactor);
 }
 
 /**
  * Calculate diet emissions (kg CO₂/year)
+ * @param {Object} params
+ * @param {string} [params.dietType='mixed'] - Type of diet (e.g., 'vegan', 'vegetarian', 'mixed', 'heavy-meat')
+ * @param {string} [params.foodWasteLevel='medium'] - Level of food waste ('high', 'medium', 'low')
+ * @returns {number} Rounded annual carbon emissions in kg CO₂
  */
 export function calculateDietEmissions({ dietType = 'mixed', foodWasteLevel = 'medium' }) {
   const baseEmissions = EMISSION_FACTORS.diet[dietType] || EMISSION_FACTORS.diet.mixed;
-  const wasteMultiplier = foodWasteLevel === 'high' ? 1.25 : foodWasteLevel === 'low' ? 0.9 : 1.0;
+  const wasteMultiplier = DIET_WASTE_MULTIPLIERS[foodWasteLevel] ?? DIET_WASTE_MULTIPLIERS.medium;
   return Math.round(baseEmissions * wasteMultiplier);
 }
 
 /**
  * Calculate lifestyle emissions (kg CO₂/year)
+ * @param {Object} params
+ * @param {string} [params.shoppingFrequency='medium'] - Shopping frequency ('high', 'medium', 'low')
+ * @param {string} [params.recyclingHabit='partial'] - Recycling habit ('none', 'partial', 'full')
+ * @param {string} [params.waterUsage='medium'] - Water usage ('high', 'medium', 'low')
+ * @returns {number} Annual carbon emissions in kg CO₂
  */
 export function calculateLifestyleEmissions({ shoppingFrequency = 'medium', recyclingHabit = 'partial', waterUsage = 'medium' }) {
-  const shoppingMap = { high: EMISSION_FACTORS.lifestyle.shoppingHigh, medium: EMISSION_FACTORS.lifestyle.shoppingMedium, low: EMISSION_FACTORS.lifestyle.shoppingLow };
-  const recyclingMap = { none: EMISSION_FACTORS.lifestyle.recyclingNone, partial: EMISSION_FACTORS.lifestyle.recyclingPartial, full: EMISSION_FACTORS.lifestyle.recyclingFull };
-  const waterMap = { high: EMISSION_FACTORS.lifestyle.waterHigh, medium: EMISSION_FACTORS.lifestyle.waterMedium, low: EMISSION_FACTORS.lifestyle.waterLow };
+  const shoppingMap = {
+    high: EMISSION_FACTORS.lifestyle.shoppingHigh,
+    medium: EMISSION_FACTORS.lifestyle.shoppingMedium,
+    low: EMISSION_FACTORS.lifestyle.shoppingLow,
+  };
+  const recyclingMap = {
+    none: EMISSION_FACTORS.lifestyle.recyclingNone,
+    partial: EMISSION_FACTORS.lifestyle.recyclingPartial,
+    full: EMISSION_FACTORS.lifestyle.recyclingFull,
+  };
+  const waterMap = {
+    high: EMISSION_FACTORS.lifestyle.waterHigh,
+    medium: EMISSION_FACTORS.lifestyle.waterMedium,
+    low: EMISSION_FACTORS.lifestyle.waterLow,
+  };
 
-  return (shoppingMap[shoppingFrequency] || 400) + (recyclingMap[recyclingHabit] || 250) + (waterMap[waterUsage] || 200);
+  const defaultShopping = EMISSION_FACTORS.lifestyle.shoppingMedium;
+  const defaultRecycling = EMISSION_FACTORS.lifestyle.recyclingPartial;
+  const defaultWater = EMISSION_FACTORS.lifestyle.waterMedium;
+
+  return (
+    (shoppingMap[shoppingFrequency] ?? defaultShopping) +
+    (recyclingMap[recyclingHabit] ?? defaultRecycling) +
+    (waterMap[waterUsage] ?? defaultWater)
+  );
 }
 
 /**
- * Calculate total carbon footprint
- * Returns breakdown and total in kg CO₂/year
+ * Calculate total carbon footprint and provide rating/comparison
+ * @param {Object} data - Form data with transport, energy, diet, and lifestyle entries
+ * @returns {Object} Total footprint details including category breakdown, rating, and ratingColor
  */
 export function calculateTotalFootprint(data) {
   const transport = calculateTransportEmissions(data.transport || {});
@@ -83,14 +158,25 @@ export function calculateTotalFootprint(data) {
   const lifestyle = calculateLifestyleEmissions(data.lifestyle || {});
   const total = transport + energy + diet + lifestyle;
 
+  const comparisonToAverage = Math.round((total / GLOBAL_AVERAGE_FOOTPRINT) * PERCENT_DIVISOR);
+  
+  let rating = 'High';
+  if (total < RATING_THRESHOLDS.EXCELLENT) {
+    rating = 'Excellent';
+  } else if (total < RATING_THRESHOLDS.GOOD) {
+    rating = 'Good';
+  } else if (total < RATING_THRESHOLDS.AVERAGE) {
+    rating = 'Average';
+  }
+
   return {
     transport,
     energy,
     diet,
     lifestyle,
     total,
-    comparisonToAverage: Math.round((total / 4000) * 100), // % of global average
-    rating: total < 3000 ? 'Excellent' : total < 5000 ? 'Good' : total < 8000 ? 'Average' : 'High',
-    ratingColor: total < 3000 ? '#10b981' : total < 5000 ? '#3b82f6' : total < 8000 ? '#f59e0b' : '#ef4444',
+    comparisonToAverage,
+    rating,
+    ratingColor: getRatingColor(rating),
   };
 }

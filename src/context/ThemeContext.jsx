@@ -1,9 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect } from 'react';
 import { getTheme, saveTheme } from '../utils/storage';
 
-const ThemeContext = createContext();
+export const ThemeContext = createContext();
 
+/**
+ * ThemeProvider component to manage and propagate active visual theme.
+ * Supports system preferences and user override storage.
+ */
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     const saved = getTheme();
@@ -28,12 +32,4 @@ export function ThemeProvider({ children }) {
       {children}
     </ThemeContext.Provider>
   );
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
 }

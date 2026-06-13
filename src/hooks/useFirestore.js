@@ -7,15 +7,24 @@ import {
 import {
   getHistory as getLocalHistory,
   deleteHistoryEntry as deleteLocalHistoryEntry,
-  setItem,
-  STORAGE_KEYS,
+  saveCalculation as saveLocalCalculation,
 } from '../utils/storage';
 
+/**
+ * Custom hook to interface with Firestore for carbon calculations storage,
+ * with seamless fallback/synchronization to local storage.
+ * @returns {Object} Loading status, errors, and save/get/delete functions
+ */
 export function useFirestore() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
 
+  /**
+   * Save calculation to database and backup locally
+   * @param {Object} footprintData - The calculated footprint breakdown and totals
+   * @returns {Promise<boolean>} True if saved to Firestore, false if fallback local storage was used
+   */
   const saveCalculation = useCallback(async (footprintData) => {
     setLoading(true);
     setError(null);
@@ -45,25 +54,8 @@ export function useFirestore() {
     }
 
     try {
-      // Fallback / Local storage save
-      const localEntry = {
-        id: docId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
-        timestamp: formattedData.createdAt,
-        ...footprintData,
-        // Also add the new properties to be fully compatible with either schema
-        totalFootprint: formattedData.totalFootprint,
-        transportation: formattedData.transportation,
-        homeEnergy: formattedData.homeEnergy,
-        impactLevel: formattedData.impactLevel,
-        createdAt: formattedData.createdAt,
-      };
-
-      const history = getLocalHistory() || [];
-      if (!history.some((item) => item.id === localEntry.id)) {
-        history.unshift(localEntry);
-        setItem(STORAGE_KEYS.HISTORY, history);
-      }
-      setItem(STORAGE_KEYS.LAST_CALCULATION, localEntry);
+      // Local storage save utilizing unified helper
+      saveLocalCalculation(footprintData, docId, formattedData.createdAt);
     } catch (err) {
       console.error('Failed to save locally:', err);
     }
@@ -72,6 +64,10 @@ export function useFirestore() {
     return savedToFirestore;
   }, []);
 
+  /**
+   * Fetch all calculations from database, falling back to local storage if offline
+   * @returns {Promise<Array<Object>>} List of historical carbon calculation entries
+   */
   const getHistory = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -92,6 +88,11 @@ export function useFirestore() {
     }
   }, []);
 
+  /**
+   * Delete a calculation from database and local storage by ID
+   * @param {string} id - The ID of the calculation entry to delete
+   * @returns {Promise<boolean>} True if deleted from Firestore, false if local only
+   */
   const deleteHistory = useCallback(async (id) => {
     setLoading(true);
     setError(null);

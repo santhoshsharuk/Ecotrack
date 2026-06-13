@@ -1,6 +1,7 @@
+import { DIFFICULTY_COLORS } from '../../utils/challenges';
+
 export default function SuggestionCard({ suggestion }) {
   const { icon, title, description, savings, difficulty, category } = suggestion;
-  const diffColors = { easy: '#10b981', medium: '#f59e0b', hard: '#ef4444' };
   const stars = difficulty === 'easy' ? '⭐' : difficulty === 'medium' ? '⭐⭐' : '⭐⭐⭐';
 
   return (
@@ -13,7 +14,7 @@ export default function SuggestionCard({ suggestion }) {
           <p className="suggestion-desc text-muted mb-2">{description}</p>
           <div className="d-flex align-items-center gap-3 flex-wrap">
             <span className="savings-badge" aria-label={`Save ${savings} kg CO2 per year`}>🌱 Save ~{savings} kg/yr</span>
-            <span className="difficulty-badge" style={{ color: diffColors[difficulty] }} aria-label={`Difficulty: ${difficulty}`}>{stars} {difficulty}</span>
+            <span className="difficulty-badge" style={{ color: DIFFICULTY_COLORS[difficulty] }} aria-label={`Difficulty: ${difficulty}`}>{stars} {difficulty}</span>
           </div>
         </div>
       </div>

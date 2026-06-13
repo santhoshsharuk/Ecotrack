@@ -1,45 +1,80 @@
-import { useState, useCallback } from 'react';
-import ChallengeCard from '../components/ChallengeCard';
-import { getAllChallenges } from '../utils/challenges';
-import { getChallengeProgress, saveChallengeProgress, removeChallengeProgress } from '../utils/storage';
+import { useState } from 'react';
+import ChallengeCard from '../components/challenges/ChallengeCard';
+import { useChallenges } from '../hooks/useChallenges';
+import { getChallengesByCategory } from '../utils/challenges';
 
+/**
+ * Challenges page component.
+ * Allows users to view, filter, join, progress, and complete various eco challenges.
+ */
 export default function Challenges() {
-  const challenges = getAllChallenges();
-  const [progress, setProgress] = useState(() => getChallengeProgress());
+  const {
+    challenges,
+    progress,
+    handleJoin,
+    handleLeave,
+    handleProgress,
+    joinedCount,
+    completedCount,
+  } = useChallenges();
+
   const [filter, setFilter] = useState('all');
+  const [toast, setToast] = useState(null);
 
-  const handleJoin = useCallback((id) => {
-    const newProgress = { joined: true, completed: 0, startDate: new Date().toISOString() };
-    saveChallengeProgress(id, newProgress);
-    setProgress((prev) => ({ ...prev, [id]: newProgress }));
-  }, []);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  };
 
-  const handleLeave = useCallback((id) => {
-    removeChallengeProgress(id);
-    setProgress((prev) => { const next = { ...prev }; delete next[id]; return next; });
-  }, []);
+  const onJoin = (id) => {
+    handleJoin(id);
+    const challenge = challenges.find((c) => c.id === id);
+    showToast(`Joined challenge: ${challenge?.title || 'Eco Challenge'}! 🚀`, 'success');
+  };
 
-  const handleProgress = useCallback((id) => {
-    setProgress((prev) => {
-      const challenge = challenges.find((c) => c.id === id);
-      const current = prev[id] || { joined: true, completed: 0 };
-      const updated = { ...current, completed: Math.min(current.completed + 1, challenge?.duration || 999) };
-      saveChallengeProgress(id, updated);
-      return { ...prev, [id]: updated };
-    });
-  }, [challenges]);
+  const onLeave = (id) => {
+    handleLeave(id);
+    const challenge = challenges.find((c) => c.id === id);
+    showToast(`Left challenge: ${challenge?.title || 'Eco Challenge'}`, 'info');
+  };
 
-  const filtered = filter === 'all' ? challenges : challenges.filter((c) => c.category === filter);
-  const joinedCount = Object.keys(progress).length;
-  const completedCount = Object.entries(progress).filter(([id, p]) => {
-    const ch = challenges.find((c) => c.id === id);
-    return ch && p.completed >= ch.duration;
-  }).length;
+  const onProgress = (id) => {
+    handleProgress(id);
+    const challenge = challenges.find((c) => c.id === id);
+    const prog = progress[id];
+    const completed = (prog?.completed || 0) + 1;
+    if (challenge && completed >= challenge.duration) {
+      showToast(`🎉 Completed challenge: ${challenge.title}! Amazing job!`, 'success');
+    } else {
+      showToast(`Logged progress for ${challenge?.title || 'Eco Challenge'}! 🌱`, 'success');
+    }
+  };
+
+  const filtered = filter === 'all' ? challenges : getChallengesByCategory(filter);
 
   return (
     <main className="container py-5">
       <h1 className="page-title text-center mb-2">Eco Challenges</h1>
       <p className="text-center text-muted mb-4">Join challenges to build sustainable habits</p>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="toast-container-feedback" role="alert" aria-live="assertive">
+          <div className="toast-feedback success">
+            <span>✨</span>
+            <span className="small fw-semibold text-start">{toast.message}</span>
+            <button
+              type="button"
+              className="btn-close ms-auto"
+              onClick={() => setToast(null)}
+              aria-label="Close notification"
+              style={{ fontSize: '0.75rem' }}
+            ></button>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="row g-3 mb-4 justify-content-center">
@@ -69,7 +104,7 @@ export default function Challenges() {
       <div className="row g-4">
         {filtered.map((ch) => (
           <div key={ch.id} className="col-12 col-md-6 col-lg-4">
-            <ChallengeCard challenge={ch} progress={progress[ch.id]} onJoin={handleJoin} onLeave={handleLeave} onProgress={handleProgress} />
+            <ChallengeCard challenge={ch} progress={progress[ch.id]} onJoin={onJoin} onLeave={onLeave} onProgress={onProgress} />
           </div>
         ))}
       </div>

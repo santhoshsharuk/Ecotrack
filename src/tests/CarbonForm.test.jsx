@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import CarbonForm from '../components/CarbonForm';
+import CarbonForm from '../components/calculator/CarbonForm';
 
 describe('CarbonForm', () => {
   test('renders the form with step indicator', () => {

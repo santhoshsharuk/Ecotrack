@@ -195,6 +195,8 @@ const ALL_SUGGESTIONS = [
 
 /**
  * Helper to remove the condition function from suggestion objects for export
+ * @param {Object} suggestion - The suggestion object containing the condition function
+ * @returns {Object} A copy of the suggestion without the condition property
  */
 function removeCondition(suggestion) {
   const copy = { ...suggestion };
@@ -204,9 +206,9 @@ function removeCondition(suggestion) {
 
 /**
  * Get personalized suggestions based on footprint data
- * @param {Object} footprintData - { transport, energy, diet, lifestyle, total }
- * @param {number} maxSuggestions - max number of suggestions to return
- * @returns {Array} filtered and sorted suggestions
+ * @param {Object} footprintData - Footprint data with transport, energy, diet, lifestyle, and total fields
+ * @param {number} [maxSuggestions=8] - Max number of suggestions to return
+ * @returns {Array<Object>} Sorted and sliced suggestions matching user's emissions profile
  */
 export function getSuggestions(footprintData, maxSuggestions = 8) {
   if (!footprintData || typeof footprintData.total !== 'number') {
@@ -224,6 +226,7 @@ export function getSuggestions(footprintData, maxSuggestions = 8) {
 
 /**
  * Get all suggestions (unfiltered) for reference
+ * @returns {Array<Object>} List of all suggestions without the condition field
  */
 export function getAllSuggestions() {
   return ALL_SUGGESTIONS.map(removeCondition);
@@ -231,6 +234,8 @@ export function getAllSuggestions() {
 
 /**
  * Get suggestions for a specific category
+ * @param {string} category - The category to filter by ('transport', 'energy', 'diet', 'lifestyle')
+ * @returns {Array<Object>} List of suggestions in the specified category
  */
 export function getSuggestionsByCategory(category) {
   return ALL_SUGGESTIONS

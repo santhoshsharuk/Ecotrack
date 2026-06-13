@@ -1,4 +1,4 @@
-import { calculateProgress, isChallengeComplete } from '../utils/challenges';
+import { calculateProgress, isChallengeComplete, DIFFICULTY_COLORS } from '../../utils/challenges';
 
 export default function ChallengeCard({ challenge, progress, onJoin, onLeave, onProgress }) {
   const { id, title, description, icon, duration, unit, co2Savings, difficulty, tips } = challenge;
@@ -6,7 +6,6 @@ export default function ChallengeCard({ challenge, progress, onJoin, onLeave, on
   const completed = progress?.completed || 0;
   const percent = calculateProgress(completed, duration);
   const isComplete = isChallengeComplete(completed, duration);
-  const diffColors = { easy: '#10b981', medium: '#f59e0b', hard: '#ef4444' };
 
   return (
     <div className={`glass-card challenge-card p-3 p-md-4 h-100 ${isComplete ? 'challenge-complete' : ''}`} role="article" aria-label={`Challenge: ${title}`} tabIndex={0}>
@@ -17,7 +16,7 @@ export default function ChallengeCard({ challenge, progress, onJoin, onLeave, on
       <h5 className="challenge-title">{title}</h5>
       <p className="text-muted small mb-2">{description}</p>
       <div className="d-flex gap-2 mb-3 flex-wrap">
-        <span className="badge" style={{ backgroundColor: diffColors[difficulty] + '22', color: diffColors[difficulty] }}>{difficulty}</span>
+        <span className="badge" style={{ backgroundColor: DIFFICULTY_COLORS[difficulty] + '22', color: DIFFICULTY_COLORS[difficulty] }}>{difficulty}</span>
         <span className="badge bg-accent-subtle">🌱 {co2Savings} kg CO₂</span>
         <span className="badge bg-secondary-subtle text-secondary">{duration} {unit}</span>
       </div>

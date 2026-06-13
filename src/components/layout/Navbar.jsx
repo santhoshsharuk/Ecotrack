@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { useTheme } from './ThemeProvider';
+import { useTheme } from '../../hooks/useTheme';
 import { FaLeaf, FaSun, FaMoon, FaBars } from 'react-icons/fa';
 
 export default function Navbar() {

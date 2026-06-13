@@ -2,6 +2,12 @@
  * Eco Challenges — definitions and progress tracking logic
  */
 
+export const DIFFICULTY_COLORS = {
+  easy: '#10b981',
+  medium: '#f59e0b',
+  hard: '#ef4444',
+};
+
 export const CHALLENGES = [
   {
     id: 'meatless-week',
@@ -103,6 +109,7 @@ export const CHALLENGES = [
 
 /**
  * Get all available challenges
+ * @returns {Array<Object>} List of all challenge definitions
  */
 export function getAllChallenges() {
   return CHALLENGES;
@@ -110,6 +117,8 @@ export function getAllChallenges() {
 
 /**
  * Get a challenge by ID
+ * @param {string} id - The unique challenge identifier
+ * @returns {Object|null} The challenge object if found, otherwise null
  */
 export function getChallengeById(id) {
   return CHALLENGES.find((c) => c.id === id) || null;
@@ -128,6 +137,9 @@ export function calculateProgress(completed, total) {
 
 /**
  * Check if a challenge is complete
+ * @param {number} completed - Number of units completed
+ * @param {number} total - Total units required
+ * @returns {boolean} True if completed exceeds or matches total
  */
 export function isChallengeComplete(completed, total) {
   return completed >= total;
@@ -135,6 +147,8 @@ export function isChallengeComplete(completed, total) {
 
 /**
  * Get challenges filtered by category
+ * @param {string} category - The challenge category (e.g. 'diet', 'transport', 'lifestyle', 'energy')
+ * @returns {Array<Object>} List of matching challenges
  */
 export function getChallengesByCategory(category) {
   return CHALLENGES.filter((c) => c.category === category);
@@ -142,6 +156,8 @@ export function getChallengesByCategory(category) {
 
 /**
  * Get challenges filtered by difficulty
+ * @param {string} difficulty - Difficulty level ('easy', 'medium', 'hard')
+ * @returns {Array<Object>} List of matching challenges
  */
 export function getChallengesByDifficulty(difficulty) {
   return CHALLENGES.filter((c) => c.difficulty === difficulty);

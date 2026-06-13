@@ -1,9 +1,14 @@
 import { useState } from 'react';
-import CarbonForm from '../components/CarbonForm';
-import CarbonResult from '../components/CarbonResult';
+import CarbonForm from '../components/calculator/CarbonForm';
+import CarbonResult from '../components/calculator/CarbonResult';
 import { calculateTotalFootprint } from '../utils/carbonCalculator';
 import { useFirestore } from '../hooks/useFirestore';
 
+/**
+ * Carbon calculator page.
+ * Collects footprint entries across domains and runs calculation, displaying
+ * interactive summaries and storing calculations back to the database.
+ */
 export default function Calculator() {
   const [result, setResult] = useState(null);
   const { saveCalculation, loading, error, statusMessage } = useFirestore();

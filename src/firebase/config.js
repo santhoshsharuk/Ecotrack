@@ -2,12 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyA64DGqwodFs8kSVGYzQ3G1ex0oyyFljwM",
-    authDomain: "eco-track-19510.firebaseapp.com",
-    projectId: "eco-track-19510",
-    storageBucket: "eco-track-19510.firebasestorage.app",
-    messagingSenderId: "668413593152",
-    appId: "1:668413593152:web:07c3adc96f5eca9b31c1a5"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);

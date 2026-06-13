@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { validateField, validateStep, sanitizeFormData } from '../../utils/validation';
 
 const INITIAL_STATE = {
   transport: {
@@ -25,6 +26,7 @@ const INITIAL_STATE = {
 export default function CarbonForm({ onSubmit }) {
   const [formData, setFormData] = useState(INITIAL_STATE);
   const [step, setStep] = useState(0);
+  const [errors, setErrors] = useState({});
 
   const steps = [
     { key: 'transport', label: 'Transportation', icon: '🚗' },
@@ -38,26 +40,78 @@ export default function CarbonForm({ onSubmit }) {
       ...prev,
       [category]: { ...prev[category], [field]: value },
     }));
+
+    // Live validation check on change
+    const err = validateField(field, value);
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (err) {
+        next[field] = err;
+      } else {
+        delete next[field];
+      }
+      return next;
+    });
+  };
+
+  const handleNext = () => {
+    const currentStepKey = steps[step].key;
+    const currentStepData = formData[currentStepKey];
+    const stepErrors = validateStep(currentStepKey, currentStepData);
+
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors);
+      return;
+    }
+
+    setErrors({});
+    setStep((s) => s + 1);
+  };
+
+  const handlePrev = () => {
+    setErrors({});
+    setStep((s) => s - 1);
   };
 
   const handleSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    // Convert numeric strings to numbers
-    const processed = {
-      transport: {
-        carKmPerWeek: Number(formData.transport.carKmPerWeek) || 0,
-        flightHoursPerYear: Number(formData.transport.flightHoursPerYear) || 0,
-        publicTransitHoursPerWeek: Number(formData.transport.publicTransitHoursPerWeek) || 0,
-      },
-      energy: {
-        electricityKwhPerMonth: Number(formData.energy.electricityKwhPerMonth) || 0,
-        naturalGasThermsPerMonth: Number(formData.energy.naturalGasThermsPerMonth) || 0,
-        renewablePercent: Number(formData.energy.renewablePercent) || 0,
-      },
-      diet: formData.diet,
-      lifestyle: formData.lifestyle,
-    };
-    onSubmit(processed);
+
+    const currentStepKey = steps[step].key;
+    const currentStepData = formData[currentStepKey];
+    const stepErrors = validateStep(currentStepKey, currentStepData);
+
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors);
+      return;
+    }
+
+    // Sanitize values to ensure strict types and boundary limits
+    const sanitized = sanitizeFormData(formData);
+    onSubmit(sanitized);
+  };
+
+  const handleStepClick = (index) => {
+    if (index > step) {
+      // Validate all intermediate steps before jumping forward
+      let valid = true;
+      for (let s = step; s < index; s++) {
+        const key = steps[s].key;
+        const stepErrors = validateStep(key, formData[key]);
+        if (Object.keys(stepErrors).length > 0) {
+          setErrors(stepErrors);
+          setStep(s);
+          valid = false;
+          break;
+        }
+      }
+      if (valid) {
+        setErrors({});
+        setStep(index);
+      }
+    } else {
+      setErrors({});
+      setStep(index);
+    }
   };
 
   const canGoNext = step < steps.length - 1;
@@ -73,7 +127,7 @@ export default function CarbonForm({ onSubmit }) {
             key={s.key}
             type="button"
             className={`step-dot ${i === step ? 'active' : ''} ${i < step ? 'completed' : ''}`}
-            onClick={() => setStep(i)}
+            onClick={() => handleStepClick(i)}
             role="tab"
             aria-selected={i === step}
             aria-label={`Step ${i + 1}: ${s.label}`}
@@ -95,14 +149,20 @@ export default function CarbonForm({ onSubmit }) {
             <input
               id="carKm"
               type="number"
-              className="form-control"
+              className={`form-control ${errors.carKmPerWeek ? 'is-invalid' : ''}`}
               min="0"
               max="5000"
               placeholder="e.g., 100"
               value={formData.transport.carKmPerWeek}
               onChange={(e) => updateField('transport', 'carKmPerWeek', e.target.value)}
-              aria-describedby="carKmHelp"
+              aria-describedby={errors.carKmPerWeek ? 'carKmError carKmHelp' : 'carKmHelp'}
+              aria-invalid={errors.carKmPerWeek ? 'true' : 'false'}
             />
+            {errors.carKmPerWeek && (
+              <div id="carKmError" className="invalid-feedback fw-semibold d-block" role="alert">
+                ⚠️ {errors.carKmPerWeek}
+              </div>
+            )}
             <small id="carKmHelp" className="form-text">Average distance driven by car each week</small>
           </div>
 
@@ -111,14 +171,20 @@ export default function CarbonForm({ onSubmit }) {
             <input
               id="flightHours"
               type="number"
-              className="form-control"
+              className={`form-control ${errors.flightHoursPerYear ? 'is-invalid' : ''}`}
               min="0"
               max="1000"
               placeholder="e.g., 10"
               value={formData.transport.flightHoursPerYear}
               onChange={(e) => updateField('transport', 'flightHoursPerYear', e.target.value)}
-              aria-describedby="flightHelp"
+              aria-describedby={errors.flightHoursPerYear ? 'flightError flightHelp' : 'flightHelp'}
+              aria-invalid={errors.flightHoursPerYear ? 'true' : 'false'}
             />
+            {errors.flightHoursPerYear && (
+              <div id="flightError" className="invalid-feedback fw-semibold d-block" role="alert">
+                ⚠️ {errors.flightHoursPerYear}
+              </div>
+            )}
             <small id="flightHelp" className="form-text">Total hours spent flying annually</small>
           </div>
 
@@ -127,14 +193,20 @@ export default function CarbonForm({ onSubmit }) {
             <input
               id="transit"
               type="number"
-              className="form-control"
+              className={`form-control ${errors.publicTransitHoursPerWeek ? 'is-invalid' : ''}`}
               min="0"
               max="100"
               placeholder="e.g., 5"
               value={formData.transport.publicTransitHoursPerWeek}
               onChange={(e) => updateField('transport', 'publicTransitHoursPerWeek', e.target.value)}
-              aria-describedby="transitHelp"
+              aria-describedby={errors.publicTransitHoursPerWeek ? 'transitError transitHelp' : 'transitHelp'}
+              aria-invalid={errors.publicTransitHoursPerWeek ? 'true' : 'false'}
             />
+            {errors.publicTransitHoursPerWeek && (
+              <div id="transitError" className="invalid-feedback fw-semibold d-block" role="alert">
+                ⚠️ {errors.publicTransitHoursPerWeek}
+              </div>
+            )}
             <small id="transitHelp" className="form-text">Hours spent on buses, trains, subways weekly</small>
           </div>
         </div>
@@ -151,14 +223,20 @@ export default function CarbonForm({ onSubmit }) {
             <input
               id="electricity"
               type="number"
-              className="form-control"
+              className={`form-control ${errors.electricityKwhPerMonth ? 'is-invalid' : ''}`}
               min="0"
               max="10000"
               placeholder="e.g., 900"
               value={formData.energy.electricityKwhPerMonth}
               onChange={(e) => updateField('energy', 'electricityKwhPerMonth', e.target.value)}
-              aria-describedby="electricityHelp"
+              aria-describedby={errors.electricityKwhPerMonth ? 'electricityError electricityHelp' : 'electricityHelp'}
+              aria-invalid={errors.electricityKwhPerMonth ? 'true' : 'false'}
             />
+            {errors.electricityKwhPerMonth && (
+              <div id="electricityError" className="invalid-feedback fw-semibold d-block" role="alert">
+                ⚠️ {errors.electricityKwhPerMonth}
+              </div>
+            )}
             <small id="electricityHelp" className="form-text">Check your electricity bill for monthly kWh usage</small>
           </div>
 
@@ -167,14 +245,20 @@ export default function CarbonForm({ onSubmit }) {
             <input
               id="gas"
               type="number"
-              className="form-control"
+              className={`form-control ${errors.naturalGasThermsPerMonth ? 'is-invalid' : ''}`}
               min="0"
               max="500"
               placeholder="e.g., 50"
               value={formData.energy.naturalGasThermsPerMonth}
               onChange={(e) => updateField('energy', 'naturalGasThermsPerMonth', e.target.value)}
-              aria-describedby="gasHelp"
+              aria-describedby={errors.naturalGasThermsPerMonth ? 'gasError gasHelp' : 'gasHelp'}
+              aria-invalid={errors.naturalGasThermsPerMonth ? 'true' : 'false'}
             />
+            {errors.naturalGasThermsPerMonth && (
+              <div id="gasError" className="invalid-feedback fw-semibold d-block" role="alert">
+                ⚠️ {errors.naturalGasThermsPerMonth}
+              </div>
+            )}
             <small id="gasHelp" className="form-text">Monthly natural gas consumption in therms</small>
           </div>
 
@@ -212,7 +296,7 @@ export default function CarbonForm({ onSubmit }) {
             <label htmlFor="dietType" className="form-label">Diet type</label>
             <select
               id="dietType"
-              className="form-select"
+              className={`form-select ${errors.dietType ? 'is-invalid' : ''}`}
               value={formData.diet.dietType}
               onChange={(e) => updateField('diet', 'dietType', e.target.value)}
               aria-describedby="dietHelp"
@@ -222,6 +306,7 @@ export default function CarbonForm({ onSubmit }) {
               <option value="mixed">🍽️ Mixed / Balanced</option>
               <option value="heavy-meat">🥩 Heavy Meat Eater</option>
             </select>
+            {errors.dietType && <div className="invalid-feedback">{errors.dietType}</div>}
             <small id="dietHelp" className="form-text">Select the option that best describes your typical diet</small>
           </div>
 
@@ -229,7 +314,7 @@ export default function CarbonForm({ onSubmit }) {
             <label htmlFor="foodWaste" className="form-label">Food waste level</label>
             <select
               id="foodWaste"
-              className="form-select"
+              className={`form-select ${errors.foodWasteLevel ? 'is-invalid' : ''}`}
               value={formData.diet.foodWasteLevel}
               onChange={(e) => updateField('diet', 'foodWasteLevel', e.target.value)}
               aria-describedby="wasteHelp"
@@ -238,6 +323,7 @@ export default function CarbonForm({ onSubmit }) {
               <option value="medium">Medium — Some food waste occasionally</option>
               <option value="high">High — Significant food goes to waste</option>
             </select>
+            {errors.foodWasteLevel && <div className="invalid-feedback">{errors.foodWasteLevel}</div>}
             <small id="wasteHelp" className="form-text">How much food do you typically throw away?</small>
           </div>
         </div>
@@ -253,7 +339,7 @@ export default function CarbonForm({ onSubmit }) {
             <label htmlFor="shopping" className="form-label">Shopping frequency</label>
             <select
               id="shopping"
-              className="form-select"
+              className={`form-select ${errors.shoppingFrequency ? 'is-invalid' : ''}`}
               value={formData.lifestyle.shoppingFrequency}
               onChange={(e) => updateField('lifestyle', 'shoppingFrequency', e.target.value)}
               aria-describedby="shopHelp"
@@ -262,6 +348,7 @@ export default function CarbonForm({ onSubmit }) {
               <option value="medium">Medium — Occasional non-essential purchases</option>
               <option value="high">High — Frequent shopping for new items</option>
             </select>
+            {errors.shoppingFrequency && <div className="invalid-feedback">{errors.shoppingFrequency}</div>}
             <small id="shopHelp" className="form-text">How often do you buy non-essential goods?</small>
           </div>
 
@@ -269,7 +356,7 @@ export default function CarbonForm({ onSubmit }) {
             <label htmlFor="recycling" className="form-label">Recycling habits</label>
             <select
               id="recycling"
-              className="form-select"
+              className={`form-select ${errors.recyclingHabit ? 'is-invalid' : ''}`}
               value={formData.lifestyle.recyclingHabit}
               onChange={(e) => updateField('lifestyle', 'recyclingHabit', e.target.value)}
               aria-describedby="recycleHelp"
@@ -278,6 +365,7 @@ export default function CarbonForm({ onSubmit }) {
               <option value="partial">I recycle some items</option>
               <option value="none">I don't recycle</option>
             </select>
+            {errors.recyclingHabit && <div className="invalid-feedback">{errors.recyclingHabit}</div>}
             <small id="recycleHelp" className="form-text">How consistently do you recycle?</small>
           </div>
 
@@ -285,7 +373,7 @@ export default function CarbonForm({ onSubmit }) {
             <label htmlFor="water" className="form-label">Water usage</label>
             <select
               id="water"
-              className="form-select"
+              className={`form-select ${errors.waterUsage ? 'is-invalid' : ''}`}
               value={formData.lifestyle.waterUsage}
               onChange={(e) => updateField('lifestyle', 'waterUsage', e.target.value)}
               aria-describedby="waterHelp"
@@ -294,6 +382,7 @@ export default function CarbonForm({ onSubmit }) {
               <option value="medium">Medium — Average household usage</option>
               <option value="high">High — Long showers, frequent watering</option>
             </select>
+            {errors.waterUsage && <div className="invalid-feedback">{errors.waterUsage}</div>}
             <small id="waterHelp" className="form-text">How would you rate your daily water consumption?</small>
           </div>
         </div>
@@ -304,7 +393,7 @@ export default function CarbonForm({ onSubmit }) {
         <button
           type="button"
           className="btn btn-outline-secondary"
-          onClick={() => setStep((s) => s - 1)}
+          onClick={handlePrev}
           disabled={!canGoPrev}
           aria-label="Go to previous step"
         >
@@ -324,7 +413,7 @@ export default function CarbonForm({ onSubmit }) {
           <button
             type="button"
             className="btn btn-accent"
-            onClick={() => setStep((s) => s + 1)}
+            onClick={handleNext}
             disabled={!canGoNext}
             aria-label="Go to next step"
           >
